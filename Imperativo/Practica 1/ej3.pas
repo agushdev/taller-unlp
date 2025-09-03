@@ -1,3 +1,5 @@
+// INCOMPLETO
+
 {
 Netflix ha publicado la lista de películas que estarán disponibles durante el mes de
 septiembre de 2025. De cada película se conoce: código de película, código de género (1:
@@ -24,17 +26,14 @@ program pelis;
 
 const
 	generos=8;
-	puntajeMin=0;
-	puntajeMax=10;
 	fin=-1;
 type
 	rangoGeneros= 1..generos;
-	rangoPuntaje= puntajeMin..puntajeMax;
 	
 	pelicula= record
 		codPeli:integer;
 		codGenero:rangoGeneros;
-		puntajePromedio:rangoPuntaje;
+		puntajePromedio:real;
 	end;
 	
 	lista= ^nodo;
@@ -44,18 +43,28 @@ type
 		sig: lista;
 	end;
 	
-	vecMayorPuntaje= array[rangoGeneros] of pelicula;
+	vecGenero= array[rangoGeneros] of lista;
+
+	maxPuntaje= record
+		codPeli: integer;
+		puntajePromedio: real;
+	end;
+
+	vecMayorPuntaje= array[rangoGeneros] of maxPuntaje;
 	
 procedure leerPeli(var p:pelicula);
 begin
+	write ('Ingrese el codigo de pelicula: (-1 para finalizar)');
 	readln(p.codPeli);
 	if (p.codPeli <> fin) then begin
-		readln(p.codGenero);
-		readln(p.puntajePromedio);
+		write ('Ingrese el codigo de genero (entre 1 y 8): ');
+		readln (p.codGenero); 
+		write ('Ingrese el puntaje: (entre 0.0 y 10)'); 
+		readln (p.puntajePromedio); 
 	end;
 end;
 
-procedure agregarAtras(var l:lista; var ult:lista; elem:pelicula);
+procedure agregarAtras(var l, ult:lista; elem:pelicula);
 var nue:lista;
 begin
 	new(nue);
@@ -68,68 +77,74 @@ begin
 	ult:=nue;
 end;
 
-procedure cargarLista(var l:lista; var ult:lista);
-var  p:pelicula;
+procedure cargarVec(var vG:vecGenero);
+var 
+	p:pelicula;
+	ult: array[rangoGeneros] of pelicula;
 begin
 	leerPeli(p);
 	while (p.codPeli <> fin)do begin
-		agregarAtras(l,ult,p);
+		agregarAtras(vG[p.codGenero],ult[p.codGenero],p);
 		leerPeli(p);
 	end;
 end;
 
-procedure inicializarVec(var v:vecMayorPuntaje);
-var i:integer;
+procedure inicializarVec(var vG:vecGenero; var vM:vecMayorPuntaje);
+var 
+	i:rangoGeneros;
 begin
-	for i:=1 to generos do v[i].puntajePromedio:=-1;
+	for i:=1 to generos do begin
+	  vG[i]:=nil;
+	  vM[i]:=0;
+	end;
 end;
 
-procedure cargarVecGenero(var v:vecMayorPuntaje; l:lista);
+procedure cargarVecGenero(var v:vecGenero; var vP:vecMayorPuntaje);
+var
+	i: rangoGeneros;
+	puntajeMax: real;
+	codPuntajeMax: integer;
+	l:lista;
 begin
-	inicializarVec(v);
-	while(l <> nil) do begin
-		if (l^.elem.puntajePromedio > v[l^.elem.codGenero].puntajePromedio) then begin
-			v[l^.elem.codGenero].codPeli:= l^.elem.codPeli;
-			v[l^.elem.codGenero].puntajePromedio:= l^.elem.puntajePromedio;
+	for i:=1 to generos do begin
+		l:= v[i];
+		puntajeMax:= -1; {Puntaje minimo}
+		codPuntajeMax:= 0; {Codigo de pelicula minimo}
+		while (l <> nil) do begin
+			if (l^.elem.puntajePromedio > puntajeMax) then begin
+				puntajeMax:= l^.elem.puntajePromedio;
+				codPuntajeMax:= l^.elem.codPeli;
+			end;
+			l:= l^.sig;
 		end;
-		l:= l^.sig;
+		vP[i]:= codPuntajeMax;
 	end;
 end;
 
 procedure ordenarVec(var v:vecMayorPuntaje);
 var
-	pos, i, j: integer;
-	aux: pelicula;
+	i, j, actual: integer;
 begin
-	for i:=1 to (generos-1) do begin
-		pos:= i;
-		for j:=i+1 to generos do begin
-			if (v[j].puntajePromedio < v[pos].puntajePromedio) then pos:= j;
+	for i:=2 to generos do begin
+		actual:= v[i];
+		j:= i-1;
+		while (j > 0) and (v[j].puntajePromedio < actual.puntajePromedio) do begin
+			v[j+1]:= v[j];
+			j:= j-1;
 		end;
-		aux:= v[pos];
-		v[pos]:= v[i];
-		v[i]:= aux;
+		v[j+1]:= actual;
 	end;
 end;
 
-procedure imprimirResultado(v: vecMayorPuntaje);
-begin
-	writeln('Mayor puntaje (codPeli): ', v[generos].codPeli);
-	writeln('Mayor puntaje (valor): ', v[generos].puntajePromedio);
-	writeln('------------------------------------');
-	writeln('Menor puntaje (codPeli): ', v[1].codPeli);
-	writeln('Menor puntaje (valor): ', v[1].puntajePromedio);
-end;
-
 var
-	l,ult: lista;
-	v:vecMayorPuntaje;
+	v:vecGenero; vM:vecMayorPuntaje;
 begin
-	l:= nil;
-	ult:= nil;
+	inicializarVec(v,vM);
 	
-	cargarLista(l,ult);
-	cargarVecGenero(v,l);
-	ordenarVec(v);
-	imprimirResultado(v);
+	cargarVec(v);
+	cargarVecGenero(v, vM);
+	ordenarVec(vM);
+	
+	writeln ('Cod peli con mayor puntaje:', vM[generos]);
+	writeln ('Cod de peli con menor puntaje:', vM [1]);
 end.
